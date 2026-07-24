@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "talking/server/proto/auth";
+
+service AuthService {
+  // 클라이언트의 JWT 토큰을 검증하고 사용자 정보를 가져옵니다.
+  rpc VerifyToken (VerifyTokenRequest) returns (VerifyTokenResponse);
+
+  // 채팅방에 속해 있는 멤버들의 ID 목록을 가져옵니다. (메시지 브로드캐스팅용)
+  rpc GetRoomMembers (GetRoomMembersRequest) returns (GetRoomMembersResponse);
+
+  // 새로운 메시지를 데이터베이스에 저장합니다.
+  rpc SaveMessage (SaveMessageRequest) returns (SaveMessageResponse);
+
+  // 두 사용자가 친구 상태인지 검증합니다.
+  rpc CheckFriendship (CheckFriendshipRequest) returns (CheckFriendshipResponse);
+}
+
+message VerifyTokenRequest {
+  string token = 1;
+}
+
+message VerifyTokenResponse {
+  string userId = 1;
+  string username = 2;
+  string nickname = 3;
+}
+
+message GetRoomMembersRequest {
+  string roomId = 1;
+}
+
+message GetRoomMembersResponse {
+  repeated string userIds = 1;
+}
+
+message SaveMessageRequest {
+  string roomId = 1;
+  string senderId = 2;
+  string content = 3;
+}
+
+message SaveMessageResponse {
+  string messageId = 1;
+  string createdAt = 2;
+  string senderNickname = 3;
+}
+
+message CheckFriendshipRequest {
+  string userId = 1;
+  string friendId = 2;
+}
+
+message CheckFriendshipResponse {
+  bool isFriend = 1;
+}

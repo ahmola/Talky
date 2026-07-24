@@ -1,0 +1,15 @@
+:80 {
+    # REST API 리버스 프록시
+    reverse_proxy /api/* auth-service:8080
+
+    # WebSocket 실시간 채팅 프록시
+    reverse_proxy /ws chat-service:8081
+
+    # Vue.js 웹 클라이언트 프록시
+    reverse_proxy /* client:80
+
+    # 로그
+    log {
+        output stdout
+    }
+}

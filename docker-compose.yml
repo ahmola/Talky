@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: talking-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=talking
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./server
+      dockerfile: auth-service/Dockerfile
+    container_name: talking-auth-service
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/talking?sslmode=disable
+      - PORT=8080
+      - GRPC_PORT=50051
+      - SCHEMA_PATH=/app/sql/postgres/schema.sql
+      - JWT_SECRET=talking-secure-secret-key-12345
+    volumes:
+      - ./sql:/app/sql
+    expose:
+      - "8080"
+      - "50051"
+
+  chat-service:
+    build:
+      context: ./server
+      dockerfile: chat-service/Dockerfile
+    container_name: talking-chat-service
+    depends_on:
+      - auth-service
+    environment:
+      - PORT=8081
+      - AUTH_GRPC_ADDR=auth-service:50051
+    expose:
+      - "8081"
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: talking-client
+    expose:
+      - "80"
+
+  gateway:
+    image: caddy:2-alpine
+    container_name: talking-gateway
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+    depends_on:
+      - client
+      - auth-service
+      - chat-service
+
+volumes:
+  pgdata:

@@ -34,7 +34,11 @@ export const useAuthStore = defineStore('auth', {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password, nickname }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+          nickname: nickname.trim(),
+        }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -46,7 +50,10 @@ export const useAuthStore = defineStore('auth', {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({
+          username: username.trim(),
+          password,
+        }),
       });
       if (!res.ok) {
         const err = await res.json();

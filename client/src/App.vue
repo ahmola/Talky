@@ -6,21 +6,54 @@
       <form @submit.prevent="handleRegister">
         <div class="form-group">
           <label>사용자 아이디</label>
-          <input v-model="regForm.username" type="text" class="form-input" required autocomplete="username" />
-        </div>
-        <div class="form-group">
-          <label>비밀번호</label>
-          <input v-model="regForm.password" type="password" class="form-input" required autocomplete="new-password" />
+          <input v-model="regForm.username" type="text" class="form-input" required autocomplete="username" placeholder="아이디 입력" />
         </div>
         <div class="form-group">
           <label>닉네임</label>
-          <input v-model="regForm.nickname" type="text" class="form-input" required />
+          <input v-model="regForm.nickname" type="text" class="form-input" required placeholder="닉네임 입력" />
         </div>
-        <button type="submit" class="auth-btn">가입하기</button>
+        <div class="form-group">
+          <label>비밀번호</label>
+          <div class="input-wrapper">
+            <input 
+              v-model="regForm.password" 
+              :type="showRegPassword ? 'text' : 'password'" 
+              class="form-input" 
+              required 
+              autocomplete="new-password" 
+              placeholder="비밀번호 입력"
+            />
+            <button type="button" class="pw-toggle-btn" @click="showRegPassword = !showRegPassword" :title="showRegPassword ? '비밀번호 숨기기' : '비밀번호 보기'">
+              {{ showRegPassword ? '👁️' : '🔒' }}
+            </button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>비밀번호 확인</label>
+          <div class="input-wrapper">
+            <input 
+              v-model="regForm.passwordConfirm" 
+              :type="showRegConfirm ? 'text' : 'password'" 
+              class="form-input" 
+              required 
+              autocomplete="new-password" 
+              placeholder="비밀번호 재입력"
+            />
+            <button type="button" class="pw-toggle-btn" @click="showRegConfirm = !showRegConfirm" :title="showRegConfirm ? '비밀번호 숨기기' : '비밀번호 보기'">
+              {{ showRegConfirm ? '👁️' : '🔒' }}
+            </button>
+          </div>
+          <p v-if="regForm.password && regForm.passwordConfirm && regForm.password !== regForm.passwordConfirm" class="error-text">
+            비밀번호가 일치하지 않습니다.
+          </p>
+        </div>
+        <button type="submit" class="auth-btn" :disabled="isSubmitting">
+          {{ isSubmitting ? '가입 처리 중...' : '가입하기' }}
+        </button>
       </form>
       <p class="auth-switch-text">
         이미 계정이 있으신가요?
-        <span class="auth-link" @click="isRegisterMode = false">로그인</span>
+        <span class="auth-link" @click="switchToLogin">로그인</span>
       </p>
     </div>
     <div v-else class="auth-card">
@@ -29,17 +62,31 @@
       <form @submit.prevent="handleLogin">
         <div class="form-group">
           <label>아이디</label>
-          <input v-model="loginForm.username" type="text" class="form-input" required autocomplete="username" />
+          <input v-model="loginForm.username" type="text" class="form-input" required autocomplete="username" placeholder="아이디 입력" />
         </div>
         <div class="form-group">
           <label>비밀번호</label>
-          <input v-model="loginForm.password" type="password" class="form-input" required autocomplete="current-password" />
+          <div class="input-wrapper">
+            <input 
+              v-model="loginForm.password" 
+              :type="showLoginPassword ? 'text' : 'password'" 
+              class="form-input" 
+              required 
+              autocomplete="current-password" 
+              placeholder="비밀번호 입력"
+            />
+            <button type="button" class="pw-toggle-btn" @click="showLoginPassword = !showLoginPassword" :title="showLoginPassword ? '비밀번호 숨기기' : '비밀번호 보기'">
+              {{ showLoginPassword ? '👁️' : '🔒' }}
+            </button>
+          </div>
         </div>
-        <button type="submit" class="auth-btn">로그인</button>
+        <button type="submit" class="auth-btn" :disabled="isSubmitting">
+          {{ isSubmitting ? '로그인 중...' : '로그인' }}
+        </button>
       </form>
       <p class="auth-switch-text">
         계정이 필요하신가요?
-        <span class="auth-link" @click="isRegisterMode = true">가입하기</span>
+        <span class="auth-link" @click="switchToRegister">가입하기</span>
       </p>
     </div>
   </div>
@@ -94,29 +141,80 @@ const chatStore = useChatStore();
 
 const isRegisterMode = ref(false);
 const activeTab = ref('friends'); // 'friends', 'chats', 'settings'
+const isSubmitting = ref(false);
+
+const showLoginPassword = ref(false);
+const showRegPassword = ref(false);
+const showRegConfirm = ref(false);
 
 const loginForm = reactive({ username: '', password: '' });
-const regForm = reactive({ username: '', password: '', nickname: '' });
+const regForm = reactive({ username: '', password: '', passwordConfirm: '', nickname: '' });
+
+const switchToLogin = () => {
+  if (regForm.username) {
+    loginForm.username = regForm.username.trim();
+  }
+  isRegisterMode.value = false;
+};
+
+const switchToRegister = () => {
+  if (loginForm.username) {
+    regForm.username = loginForm.username.trim();
+  }
+  isRegisterMode.value = true;
+};
 
 onMounted(() => {
   authStore.initialize();
 });
 
 const handleLogin = async () => {
+  const username = loginForm.username.trim();
+  if (!username) {
+    alert('아이디를 입력해주세요.');
+    return;
+  }
+  isSubmitting.value = true;
   try {
-    await authStore.login(loginForm.username, loginForm.password);
+    await authStore.login(username, loginForm.password);
   } catch (err) {
     alert(err.message);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
 const handleRegister = async () => {
+  const username = regForm.username.trim();
+  const nickname = regForm.nickname.trim();
+  const password = regForm.password;
+
+  if (!username) {
+    alert('아이디를 입력해주세요.');
+    return;
+  }
+  if (!password) {
+    alert('비밀번호를 입력해주세요.');
+    return;
+  }
+  if (password !== regForm.passwordConfirm) {
+    alert('비밀번호와 비밀번호 확인이 일치하지 않습니다.');
+    return;
+  }
+  if (!nickname) {
+    alert('닉네임을 입력해주세요.');
+    return;
+  }
+
+  isSubmitting.value = true;
   try {
-    await authStore.register(regForm.username, regForm.password, regForm.nickname);
-    alert('가입되었습니다! 로그인해주세요.');
-    isRegisterMode.value = false;
+    await authStore.register(username, password, nickname);
+    alert('가입이 완료되었습니다! 자동으로 로그인합니다.');
+    await authStore.login(username, password);
   } catch (err) {
     alert(err.message);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 </script>
@@ -251,5 +349,42 @@ const handleRegister = async () => {
 
 .logout-btn:hover {
   background-color: #a62a2d;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrapper .form-input {
+  padding-right: 42px;
+}
+
+.pw-toggle-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pw-toggle-btn:hover {
+  opacity: 1;
+}
+
+.error-text {
+  color: var(--accent-red);
+  font-size: 12px;
+  margin-top: 4px;
+  text-align: left;
 }
 </style>
